@@ -113,28 +113,28 @@ def convert_df_to_csv(dataframe):
     return dataframe.to_csv(index=False).encode('utf-8')
 
 # Dashboard
-st.title("Dashboard de Issues - Projeto JET (Chamados Concluídos nos Últimos 45 Dias)")
+st.title("Controle de Produtividade e Horas Time OMOTOR (Concluídos nos Últimos 45 Dias)")
 
-st.header("Horas por Tipo de Atividade")
-st.write("Tabela: Total de Horas por Tipo de Atividade")
+st.header("Tipo de Atividade")
+st.write("Total de Horas Consumidas por Tipo de Atividade")
 st.dataframe(activity_hours, use_container_width=True)
 
-st.header("Horas Trabalhadas por Tipo")
-st.write("Tabela com Total de Horas por Tipo:")
+st.header("Issue Type")
+st.write("Horas Consumidas por Issue Type")
 st.dataframe(issue_type_hours, use_container_width=True)
 
-st.header("Resumo por Responsável")
-st.write("Tabela com Total de Horas por Responsável:")
+st.header("Responsável")
+st.write("Horas Consumidas Conforme Responsável Pela Solução")
 st.dataframe(activities_by_assignee, use_container_width=True)
 
-st.header("Horas por Parent")
-st.write("Tabela: Total de Horas Trabalhadas por Parent")
+st.header("Chamado Pai / Projeto")
+st.write("Contagem de Horas Por Projeto")
 st.dataframe(parent_hours, use_container_width=True)
 
-st.header("Cruzamento de Horas: Parent x Tipo de Atividade")
-st.write("Tabela: Total de Horas por Parent e Tipo de Atividade")
+st.header("Cruzamento de Horas: Projeto x Tipo de Atividade")
+st.write("Horas Consumidas Por Projeto x Tipo de Atividade")
 st.dataframe(parent_activity_hours, use_container_width=True)
 
-st.header("Detalhamento Completo")
-st.write("Tabela: Key, Summary, Data de Conclusão, Tipo de Atividade, Issue Type, Pai, Responsável, Horas Trabalhadas")
+st.header("Chamados Concluídos")
+st.write("Tabela com Todos Chamados Resolvidos no Período")
 st.dataframe(detailed_table, use_container_width=True, height=400)
