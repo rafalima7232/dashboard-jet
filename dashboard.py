@@ -9,7 +9,7 @@ API_KEY = "ATATT3xFfGF0eoudllQ-7pyhZQenzM_mlDoyngwek5GwnfSk2xMDdyETSLW3UF7GkvHwN
 
 # Função para buscar dados da API com paginação
 def get_issues(jql):
-    max_results = 1000  # Máximo permitido pela API
+    max_results = 100  # Máximo permitido por página na API
     start_at = 0
     issues = []
     while True:
@@ -25,7 +25,7 @@ def get_issues(jql):
         issues.extend(data.get("issues", []))
         
         # Verifica se há mais páginas
-        if start_at + max_results >= data.get("total", 0):  # Parar quando atingir o total
+        if start_at + max_results >= data.get("total", 0):
             break
         
         # Incrementa o startAt para a próxima página
@@ -34,15 +34,13 @@ def get_issues(jql):
 
 # Função para mapear tipos de atividade
 def map_activity_type(value):
-    # Se o valor for um dicionário, converte para string
     if isinstance(value, dict):
-        value = value.get("value", "Outro")  # Usa o campo "value", se existir
+        value = value.get("value", "Outro")
     elif isinstance(value, list):
-        value = ", ".join([str(v) for v in value])  # Concatena itens da lista
-    elif not isinstance(value, str):  # Converte outros tipos para string
+        value = ", ".join([str(v) for v in value])
+    elif not isinstance(value, str):
         value = str(value)
     
-    # Mapeia valores conhecidos
     mapping = {
         "Projeto": "Projeto",
         "Demanda": "Demanda",
@@ -59,26 +57,26 @@ issues = get_issues(jql)
 df = pd.DataFrame([{
     "Key": issue["key"],
     "Summary": issue["fields"]["summary"],
-    "Assignee": issue["fields"]["assignee"]["displayName"] if issue["fields"]["assignee"] else "Unassigned",
+    "Assignee": issue["fields"].get("assignee", {}).get("displayName", "Unassigned") if issue["fields"].get("assignee") else "Unassigned",
     "Type": issue["fields"]["issuetype"]["name"],
-    "Activity Type": map_activity_type(issue["fields"].get("customfield_10217", "Outro")),  # Mapeia tipos conhecidos
-    "Parent": issue["fields"]["parent"]["fields"]["summary"] if "parent" in issue["fields"] else "Sem Parent",  # Agora exibe o nome (summary) do Parent
-    "Hours Worked": round(issue["fields"].get("customfield_10184") or 0, 2),  # Garante valor numérico antes do arredondamento
+    "Activity Type": map_activity_type(issue["fields"].get("customfield_10217", "Outro")),
+    "Parent": issue["fields"].get("parent", {}).get("fields", {}).get("summary", "Sem Parent"),
+    "Hours Worked": round(issue["fields"].get("customfield_10184") or 0, 2),
     "Created": pd.to_datetime(issue["fields"]["created"]),
-    "Resolved": pd.to_datetime(issue["fields"].get("resolutiondate")),  # Data de conclusão
+    "Resolved": pd.to_datetime(issue["fields"].get("resolutiondate")).date() if issue["fields"].get("resolutiondate") else None,
     "Status": issue["fields"]["status"]["name"]
 } for issue in issues])
 
 # Filtrar os últimos 45 dias (já feito na JQL, mas mantido para consistência)
-filtered_df = df[df["Resolved"] >= (pd.Timestamp.now(tz="America/Sao_Paulo") - pd.DateOffset(days=45))]
+filtered_df = df[df["Resolved"] >= (pd.Timestamp.now(tz="America/Sao_Paulo") - pd.DateOffset(days=45)).date()]
 
 # 1. Tabela: Total de Horas por Tipo de Atividade
 activity_hours = filtered_df.groupby("Activity Type")["Hours Worked"].sum().reset_index()
-activity_hours["Hours Worked"] = activity_hours["Hours Worked"].round(2)  # Ajuste de 2 casas decimais
+activity_hours["Hours Worked"] = activity_hours["Hours Worked"].round(2)
 
 # 2. Tabela: Horas Trabalhadas por Tipo
 issue_type_hours = filtered_df.groupby("Type")["Hours Worked"].sum().reset_index()
-issue_type_hours["Hours Worked"] = issue_type_hours["Hours Worked"].round(2)  # Ajuste de 2 casas decimais
+issue_type_hours["Hours Worked"] = issue_type_hours["Hours Worked"].round(2)
 
 # 3. Tabela com Total de Horas por Responsável
 responsible_summary = (
@@ -87,7 +85,7 @@ responsible_summary = (
     .reset_index()
     .rename(columns={"Hours Worked": "Total Hours"})
 )
-responsible_summary["Total Hours"] = responsible_summary["Total Hours"].round(2)  # Ajuste de 2 casas decimais
+responsible_summary["Total Hours"] = responsible_summary["Total Hours"].round(2)
 activities_by_assignee = (
     filtered_df.groupby(["Assignee", "Type"])["Hours Worked"]
     .sum()
@@ -97,7 +95,7 @@ activities_by_assignee["Total Hours"] = responsible_summary.set_index("Assignee"
 
 # 4. Tabela: Total de Horas por Parent
 parent_hours = filtered_df.groupby("Parent")["Hours Worked"].sum().reset_index()
-parent_hours["Hours Worked"] = parent_hours["Hours Worked"].round(2)  # Ajuste de 2 casas decimais
+parent_hours["Hours Worked"] = parent_hours["Hours Worked"].round(2)
 
 # 5. Tabela: Cruzamento de Horas por Parent e Tipo de Atividade
 parent_activity_hours = (
@@ -105,27 +103,38 @@ parent_activity_hours = (
     .sum()
     .unstack(fill_value=0)
 )
-parent_activity_hours = parent_activity_hours.round(2)  # Ajuste de 2 casas decimais
+parent_activity_hours = parent_activity_hours.round(2)
+
+# 6. Tabela: Detalhamento Completo
+detailed_table = filtered_df[["Key", "Summary", "Resolved", "Activity Type", "Type", "Parent", "Assignee", "Hours Worked"]]
+
+# Função para gerar CSV
+def convert_df_to_csv(dataframe):
+    return dataframe.to_csv(index=False).encode('utf-8')
 
 # Dashboard
 st.title("Dashboard de Issues - Projeto JET (Chamados Concluídos nos Últimos 45 Dias)")
 
 st.header("Horas por Tipo de Atividade")
 st.write("Tabela: Total de Horas por Tipo de Atividade")
-st.table(activity_hours)
+st.dataframe(activity_hours, use_container_width=True)
 
 st.header("Horas Trabalhadas por Tipo")
 st.write("Tabela com Total de Horas por Tipo:")
-st.table(issue_type_hours)
+st.dataframe(issue_type_hours, use_container_width=True)
 
 st.header("Resumo por Responsável")
 st.write("Tabela com Total de Horas por Responsável:")
-st.table(activities_by_assignee)
+st.dataframe(activities_by_assignee, use_container_width=True)
 
 st.header("Horas por Parent")
 st.write("Tabela: Total de Horas Trabalhadas por Parent")
-st.table(parent_hours)
+st.dataframe(parent_hours, use_container_width=True)
 
 st.header("Cruzamento de Horas: Parent x Tipo de Atividade")
 st.write("Tabela: Total de Horas por Parent e Tipo de Atividade")
-st.table(parent_activity_hours)
+st.dataframe(parent_activity_hours, use_container_width=True)
+
+st.header("Detalhamento Completo")
+st.write("Tabela: Key, Summary, Data de Conclusão, Tipo de Atividade, Issue Type, Pai, Responsável, Horas Trabalhadas")
+st.dataframe(detailed_table, use_container_width=True, height=400)
