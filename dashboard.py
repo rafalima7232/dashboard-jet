@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import pandas as pd
+import time  # Biblioteca para controle de tempo
 
 # Configurações da API do JIRA
 JIRA_URL = "https://omotor.atlassian.net/rest/api/3/search"
@@ -108,33 +109,28 @@ parent_activity_hours = parent_activity_hours.round(2)
 # 6. Tabela: Detalhamento Completo
 detailed_table = filtered_df[["Key", "Summary", "Resolved", "Activity Type", "Type", "Parent", "Assignee", "Hours Worked"]]
 
-# Função para gerar CSV
-def convert_df_to_csv(dataframe):
-    return dataframe.to_csv(index=False).encode('utf-8')
-
 # Dashboard
 st.title("Controle de Produtividade e Horas Time OMOTOR (Concluídos nos Últimos 45 Dias)")
 
 st.header("Tipo de Atividade")
-st.write("Total de Horas Consumidas por Tipo de Atividade")
 st.dataframe(activity_hours, use_container_width=True)
 
 st.header("Issue Type")
-st.write("Horas Consumidas por Issue Type")
 st.dataframe(issue_type_hours, use_container_width=True)
 
 st.header("Responsável")
-st.write("Horas Consumidas Conforme Responsável Pela Solução")
 st.dataframe(activities_by_assignee, use_container_width=True)
 
 st.header("Chamado Pai / Projeto")
-st.write("Contagem de Horas Por Projeto")
 st.dataframe(parent_hours, use_container_width=True)
 
 st.header("Cruzamento de Horas: Projeto x Tipo de Atividade")
-st.write("Horas Consumidas Por Projeto x Tipo de Atividade")
 st.dataframe(parent_activity_hours, use_container_width=True)
 
 st.header("Chamados Concluídos")
-st.write("Tabela com Todos Chamados Resolvidos no Período")
 st.dataframe(detailed_table, use_container_width=True, height=400)
+
+# Adiciona um reload automático a cada 30 minutos
+RELOAD_INTERVAL = 30 * 60  # 30 minutos em segundos
+st.experimental_rerun()
+time.sleep(RELOAD_INTERVAL)
