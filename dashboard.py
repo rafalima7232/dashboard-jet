@@ -1,7 +1,6 @@
 import streamlit as st
 import requests
 import pandas as pd
-import time  # Biblioteca para controle de tempo
 
 # Configurações da API do JIRA
 JIRA_URL = "https://omotor.atlassian.net/rest/api/3/search"
@@ -130,7 +129,15 @@ st.dataframe(parent_activity_hours, use_container_width=True)
 st.header("Chamados Concluídos")
 st.dataframe(detailed_table, use_container_width=True, height=400)
 
-# Adiciona um reload automático a cada 30 minutos
-RELOAD_INTERVAL = 30 * 60  # 30 minutos em segundos
-st.experimental_rerun()
-time.sleep(RELOAD_INTERVAL)
+# Adiciona um reload automático a cada 30 minutos usando JavaScript
+reload_interval = 30 * 60 * 1000  # 30 minutos em milissegundos
+st.markdown(
+    f"""
+    <script>
+        setTimeout(function(){{
+            window.location.reload();
+        }}, {reload_interval});
+    </script>
+    """,
+    unsafe_allow_html=True
+)
